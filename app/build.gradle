@@ -35,5 +35,5 @@ dependencies {
     implementation 'com.github.javiersantos:MaterialStyledDialogs:2.1'
     implementation project(path: ':xplayer')
     implementation 'org.jsoup:jsoup:1.13.1'
-    implementation 'com.github.amitshekhariitbhu.Fast-Android-Networking:android-networking:v1.0.2'
+    implementation 'com.github.amitshekhariitbhu.Fast-Android-Networking:android-networking:1.0.4'
 }
