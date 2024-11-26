@@ -23,7 +23,10 @@ allprojects {
         gradlePluginPortal()
         mavenCentral()
         maven { url "https://jitpack.io" }
-         maven { url 'https://repo.maven.apache.org/maven2/' }
+        maven { url 'https://repo1.maven.org/maven2/' }
+        maven { url 'https://jcenter.bintray.com/' }
+        maven { url 'https://maven.wso2.org/nexus/content/repositories/public/' }
+        maven { url 'https://repo.maven.apache.org/maven2/' }
     }
 }
 
