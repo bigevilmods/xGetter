@@ -1,11 +1,10 @@
 package com.htetznaing.xgetterexample.Player;
 
-import android.Manifest;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
@@ -14,41 +13,31 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.google.android.exoplayer2.ExoPlaybackException;
-import com.google.android.exoplayer2.ExoPlayerFactory;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.source.ExtractorMediaSource;
-import com.google.android.exoplayer2.source.MediaSource;
-import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
-import com.google.android.exoplayer2.ui.PlayerView;
-import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
-import com.google.android.exoplayer2.util.Util;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
+import androidx.media3.common.util.Util;
+import androidx.media3.datasource.DefaultDataSource;
+import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.source.ProgressiveMediaSource;
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
+import androidx.media3.ui.PlayerView;
+
 import com.htetznaing.lowcostvideo.Model.XModel;
 import com.htetznaing.xgetterexample.R;
 import com.htetznaing.xgetterexample.Utils.XDownloader;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-
-
+import java.util.HashMap;
+import java.util.Map;
 
 public class SimpleVideoPlayer extends AppCompatActivity {
-    private int AFTER_PERMISSION_GRANTED = 0;
-    private final int PLAY = 1;
-    private final int DOWNLOAD = 2;
-
     private boolean doubleBackToExitPressedOnce = false;
-    private SimpleExoPlayer player;
+    private ExoPlayer player;
     private PlayerView playerView;
-    private String url,cookie=null;
+    private String url, cookie = null;
     private ProgressBar progressBar;
     private XDownloader xDownloader;
 
@@ -61,22 +50,21 @@ public class SimpleVideoPlayer extends AppCompatActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_video_player);
 
-        if (getActionBar()!=null){
+        if (getActionBar() != null) {
             getActionBar().hide();
         }
 
-        if (getSupportActionBar()!=null){
+        if (getSupportActionBar() != null) {
             getSupportActionBar().hide();
         }
 
         Intent intent = getIntent();
 
-        if (intent.getStringExtra("url")!=null){
+        if (intent.getStringExtra("url") != null) {
             url = intent.getStringExtra("url");
         }
 
-        // get cookie from intent if google drive
-        if (intent.getStringExtra("cookie")!=null){
+        if (intent.getStringExtra("cookie") != null) {
             cookie = intent.getStringExtra("cookie");
         }
 
@@ -88,56 +76,23 @@ public class SimpleVideoPlayer extends AppCompatActivity {
             }
         });
 
-        if (url==null){
+        if (url == null) {
             finish();
             Toast.makeText(this, "File Not Support!", Toast.LENGTH_SHORT).show();
-        }else {
-            if (url.startsWith("http")){
+        } else {
+            if (url.startsWith("http")) {
                 initApp();
-            }else
-            if (checkPermissions()){
-                AFTER_PERMISSION_GRANTED = PLAY;
+            } else {
                 initApp();
             }
         }
     }
 
-    private boolean checkPermissions() {
-        int storage = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        final List<String> listPermissionsNeeded = new ArrayList<>();
-        if (storage != PackageManager.PERMISSION_GRANTED) {
-            listPermissionsNeeded.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        }
-        if (!listPermissionsNeeded.isEmpty()) {
-            ActivityCompat.requestPermissions(this, listPermissionsNeeded.toArray(new String[listPermissionsNeeded.size()]), 1000);
-            return false;
-        }
-        return true;
-    }
-
-    private void download(){
+    private void download() {
         XModel xModel = new XModel();
         xModel.setUrl(url);
         xModel.setCookie(cookie);
         xDownloader.download(xModel);
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode==1000){
-            if (grantResults.length > 0&& grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                if (AFTER_PERMISSION_GRANTED==PLAY) {
-                    initApp();
-                }else
-                    download();
-
-            } else {
-                checkPermissions();
-                Toast.makeText(this, "You need to allow this permission!", Toast.LENGTH_SHORT).show();
-            }
-            return;
-        }
     }
 
     private void initApp() {
@@ -146,47 +101,52 @@ public class SimpleVideoPlayer extends AppCompatActivity {
         progressBar.setVisibility(View.VISIBLE);
 
         DefaultTrackSelector trackSelector = new DefaultTrackSelector();
-        player = ExoPlayerFactory.newSimpleInstance(SimpleVideoPlayer.this, trackSelector);
+        player = new ExoPlayer.Builder(this)
+                .setTrackSelector(trackSelector)
+                .build();
         playerView.setPlayer(player);
 
-        String userAgent = Util.getUserAgent(SimpleVideoPlayer.this, getResources().getString(R.string.app_name));
-        DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(SimpleVideoPlayer.this, userAgent);
+        String userAgent = Util.getUserAgent(this, getResources().getString(R.string.app_name));
+        DefaultDataSource.Factory dataSourceFactory;
 
-        //If google drive you need to set custom cookie
-        if (cookie!=null) {
-            DefaultHttpDataSourceFactory httpDataSourceFactory = new DefaultHttpDataSourceFactory(userAgent, null);
-            httpDataSourceFactory.getDefaultRequestProperties().set("Cookie", cookie);
-            dataSourceFactory = new DefaultDataSourceFactory(getApplicationContext(), null, httpDataSourceFactory);
+        Map<String, String> requestProperties = new HashMap<>();
+        requestProperties.put("Referer", "");
+
+        if (cookie != null) {
+            requestProperties.put("Cookie", cookie);
         }
 
-        DefaultHttpDataSourceFactory httpDataSourceFactory = new DefaultHttpDataSourceFactory(userAgent, null);
-        httpDataSourceFactory.getDefaultRequestProperties().set("Referer", "");
-        dataSourceFactory = new DefaultDataSourceFactory(getApplicationContext(), null, httpDataSourceFactory);
+        DefaultHttpDataSource.Factory httpDataSourceFactory = new DefaultHttpDataSource.Factory()
+                .setUserAgent(userAgent)
+                .setDefaultRequestProperties(requestProperties);
+        dataSourceFactory = new DefaultDataSource.Factory(this, httpDataSourceFactory);
 
-        MediaSource videoSource = new ExtractorMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(url));
-        player.prepare(videoSource);
+        MediaItem mediaItem = MediaItem.fromUri(Uri.parse(url));
+        ProgressiveMediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(mediaItem);
+
+        player.setMediaSource(mediaSource);
+        player.prepare();
         player.setPlayWhenReady(true);
-        player.addListener(new Player.DefaultEventListener() {
+
+        player.addListener(new Player.Listener() {
             @Override
-            public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
-                if (playWhenReady) {
+            public void onPlaybackStateChanged(int playbackState) {
+                if (playbackState == Player.STATE_READY) {
                     progressBar.setVisibility(View.GONE);
                 }
-                super.onPlayerStateChanged(playWhenReady, playbackState);
             }
 
             @Override
-            public void onPlayerError(ExoPlaybackException error) {
-                super.onPlayerError(error);
+            public void onPlayerError(@NonNull PlaybackException error) {
                 finish();
-                System.out.println(error.getMessage());
                 Toast.makeText(SimpleVideoPlayer.this, error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
 
         ImageButton rotate = findViewById(R.id.rotate);
 
-        if (rotate!=null) {
+        if (rotate != null) {
             rotate.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
@@ -200,9 +160,8 @@ public class SimpleVideoPlayer extends AppCompatActivity {
             });
         }
 
-
         ImageButton download = findViewById(R.id.download);
-        if (download!=null) {
+        if (download != null) {
             if (!url.startsWith("http")) {
                 download.setVisibility(View.GONE);
                 download.setEnabled(false);
@@ -210,17 +169,14 @@ public class SimpleVideoPlayer extends AppCompatActivity {
             download.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    if (checkPermissions()) {
-                        AFTER_PERMISSION_GRANTED = DOWNLOAD;
-                        download();
-                    }
+                    download();
                 }
             });
         }
     }
 
     @Override
-    public void onConfigurationChanged(Configuration newConfig) {
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
     }
 
@@ -237,7 +193,7 @@ public class SimpleVideoPlayer extends AppCompatActivity {
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
-                doubleBackToExitPressedOnce=false;
+                doubleBackToExitPressedOnce = false;
             }
         }, 2000);
     }
@@ -245,7 +201,7 @@ public class SimpleVideoPlayer extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (player !=null){
+        if (player != null) {
             player.setPlayWhenReady(true);
         }
     }
@@ -262,6 +218,7 @@ public class SimpleVideoPlayer extends AppCompatActivity {
     protected void onDestroy() {
         if (player != null) {
             player.setPlayWhenReady(false);
+            player.release();
         }
         super.onDestroy();
     }

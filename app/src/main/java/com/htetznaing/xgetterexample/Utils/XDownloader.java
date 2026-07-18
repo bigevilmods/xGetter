@@ -14,7 +14,6 @@ import android.widget.Toast;
 
 import com.htetznaing.lowcostvideo.Model.XModel;
 
-import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.text.SimpleDateFormat;
@@ -25,34 +24,28 @@ import static android.content.Context.DOWNLOAD_SERVICE;
 
 public class XDownloader {
     private Activity activity;
-    private String mBaseFolderPath;
     private DownloadManager mDownloadManager;
     private long mDownloadedFileID;
     private DownloadManager.Request mRequest;
     private OnDownloadFinished onDownloadFinished;
 
-    public XDownloader(Activity activity){
+    public XDownloader(Activity activity) {
         this.activity = activity;
         mDownloadManager = (DownloadManager) activity.getSystemService(DOWNLOAD_SERVICE);
-        mBaseFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)+"/";
     }
 
-    public void download(XModel xModel){
+    public void download(XModel xModel) {
         try {
             SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss", Locale.ENGLISH);
             Date now = new Date();
             String fileName = formatter.format(now) + "_xStreamPlayer.mp4";
 
-            if (!new File(mBaseFolderPath).exists()) {
-                new File(mBaseFolderPath).mkdir();
-            }
-            String mFilePath = "file://" + mBaseFolderPath + fileName;
             Uri downloadUri = Uri.parse(xModel.getUrl());
             mRequest = new DownloadManager.Request(downloadUri);
-            mRequest.setDestinationUri(Uri.parse(mFilePath));
 
-            //If google drive you need to set cookie
-            if (xModel.getCookie()!=null){
+            mRequest.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+
+            if (xModel.getCookie() != null) {
                 mRequest.addRequestHeader("cookie", xModel.getCookie());
             }
 
@@ -78,24 +71,26 @@ public class XDownloader {
         @Override
         public void onReceive(Context context, Intent intent) {
             Uri uri = mDownloadManager.getUriForDownloadedFile(mDownloadedFileID);
-            onDownloadFinished.onCompleted(getRealPathFromURI(uri));
+            if (uri != null) {
+                onDownloadFinished.onCompleted(getRealPathFromURI(uri));
+            }
         }
     };
 
-    private String getRealPathFromURI (Uri contentUri) {
+    private String getRealPathFromURI(Uri contentUri) {
         String path = null;
-        String[] proj = { MediaStore.MediaColumns.DATA };
+        String[] proj = {MediaStore.MediaColumns.DATA};
         Cursor cursor = activity.getContentResolver().query(contentUri, proj, null, null, null);
-        if (cursor.moveToFirst()) {
+        if (cursor != null && cursor.moveToFirst()) {
             int column_index = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA);
             path = cursor.getString(column_index);
+            cursor.close();
         }
-        cursor.close();
         return path;
     }
 
-    public void OnDownloadFinishedListerner(OnDownloadFinished onDownloadFinished){
-        this.onDownloadFinished=onDownloadFinished;
+    public void OnDownloadFinishedListerner(OnDownloadFinished onDownloadFinished) {
+        this.onDownloadFinished = onDownloadFinished;
     }
 
     public interface OnDownloadFinished {

@@ -1,6 +1,5 @@
 package com.htetznaing.xgetterexample;
 
-import android.Manifest;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
@@ -22,8 +21,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
 import com.afollestad.materialdialogs.DialogAction;
 import com.afollestad.materialdialogs.MaterialDialog;
@@ -342,9 +339,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void downloadFile(XModel xModel){
         current_Xmodel = xModel;
-        if (checkPermissions()){
-            xDownloader.download(current_Xmodel);
-        }
+        xDownloader.download(current_Xmodel);
     }
 
     public void open(String url,String title) {
@@ -463,32 +458,7 @@ public class MainActivity extends AppCompatActivity {
         builder.show();
     }
 
-    private boolean checkPermissions() {
-        int storage = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        final List<String> listPermissionsNeeded = new ArrayList<>();
-        if (storage != PackageManager.PERMISSION_GRANTED) {
-            listPermissionsNeeded.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        }
-        if (!listPermissionsNeeded.isEmpty()) {
-            ActivityCompat.requestPermissions(this, listPermissionsNeeded.toArray(new String[listPermissionsNeeded.size()]), 1000);
-            return false;
-        }
-        return true;
-    }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode==1000){
-            if (grantResults.length > 0&& grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                downloadFile(current_Xmodel);
-            } else {
-                checkPermissions();
-                Toast.makeText(this, "You need to allow this permission!", Toast.LENGTH_SHORT).show();
-            }
-            return;
-        }
-    }
 
     public boolean appInstalledOrNot(String str) {
         try {
