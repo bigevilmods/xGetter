@@ -1,8 +1,8 @@
 apply plugin: 'com.android.library'
 apply plugin: 'maven-publish'
 
-group='com.htetznaing'
-version='3.0'
+group = 'com.htetznaing'
+version = '3.0'
 
 android {
     namespace 'com.htetznaing.lowcostvideo'
@@ -40,4 +40,17 @@ dependencies {
     implementation 'org.apache.commons:commons-lang3:3.14.0'
     implementation 'org.jsoup:jsoup:1.18.1'
     implementation 'com.github.amitshekhariitbhu.Fast-Android-Networking:android-networking:1.0.4'
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+                groupId = group
+                artifactId = project.getName()
+                version = version
+            }
+        }
+    }
 }
